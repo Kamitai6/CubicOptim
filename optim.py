@@ -13,10 +13,10 @@ import trapezoid_vel_profile as profile
 
 #TODO
 '''
-・stopが微妙にバグってるので要修正
-・4つおきに速度プロファイルに入力できるようにする
-・最適化する座標を部分的に追加できるようにする
+・任意数おきに速度プロファイルに入力できるようにする
 ・p_x, p_yを辞書型にして、ユーザー入力座標か最適化座標かわかりやすく色分け
+・初期値がおかしくないか判定して修正
+・プロファイルパラメータも最適化したい
 '''
 
 '''
@@ -24,9 +24,10 @@ parameters
 '''
 start = [0.0, 0.0, 0.0] # x y Θ
 
-point =  [[0.2, 3.2, 0.0], [1.1, 3.15, 90.0], [1.25, 0.0, 0.0], [2.97, 0.35, 0.0], [2.97, 0.95, 0.0], [2.25, 1.35, 0.0], [2.25, 1.95, 0.0], [3.0, 2.4, 0.0], [3.1, 3.6, 0.0]]
-velocity =     [0.0, 2.0, -1.0, 1.0, 1.5, 1.0, 1.5, 1.0, 0.0] # -1 --> stop
-acceleration = [5.0, 2.0,  5.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
+point =  [[0.2, 3.2, 0.0], [1.1, 3.15, 90.0], [1.25, 0.0, 0.0], [2.97, 0.35, 0.0], [2.25, 1.35, 0.0], [2.97, 2.4, 0.0], [3.1, 3.6, 0.0]]
+estimate_point = [1, 1, 1, 1, 2, 2, 1]
+velocity =     [0.0, 2.0, -1.0, 1.0, 1.0, 1.0, 0.0] # -1 --> stop
+acceleration = [5.0, 2.0,  5.0, 3.0, 3.0, 3.0, 3.0]
 
 declaration = acceleration
 v_max = 3.0
@@ -49,16 +50,20 @@ robot_size = 0.5 # m
 roll_length = 0.3 # m
 
 l_gain = 1
-c_gain = 1.1
+c_gain = 1.2
+
+show_map = True
 
 param = []
 for i in range(len(point)):
     if i == 0:
-        param.append(start[0]+(point[i][0]-start[0])/2)
-        param.append(start[1]+(point[i][1]-start[1])/2)
+        for j in range(estimate_point[i]):
+            param.append(start[0]+(point[i][0]-start[0])*(j+1)/(estimate_point[i]+1))
+            param.append(start[1]+(point[i][1]-start[1])*(j+1)/(estimate_point[i]+1))
     else:
-        param.append(point[i-1][0]+(point[i][0]-point[i-1][0])/2)
-        param.append(point[i-1][1]+(point[i][1]-point[i-1][1])/2)
+        for j in range(estimate_point[i]):
+            param.append(point[i-1][0]+(point[i][0]-point[i-1][0])*(j+1)/(estimate_point[i]+1))
+            param.append(point[i-1][1]+(point[i][1]-point[i-1][1])*(j+1)/(estimate_point[i]+1))
 
 fig, ax = plt.subplots(figsize=(6, 6))
 
@@ -91,11 +96,12 @@ def calcTrajectory(param):
     for i in range(len(velocity)):
         if velocity[i] < 0:
             nega.append(i)
-    nega.append(len(point)-1)
+    nega.append(len(velocity)-1)
 
     r_x, r_y, r_k, length, length_list = [], [], [], [], []
     p_x = []
     p_y = []
+    e = 0
     for i in range(len(nega)-1):
         px, py = [], []
         if i == 0:
@@ -106,56 +112,60 @@ def calcTrajectory(param):
         else:
             px.append(point[nega[i]][0])
             py.append(point[nega[i]][1])
-        for j in range(nega[i]+i, nega[i+1]+1):
-            p_x.append(param[2*j])
-            p_y.append(param[2*j+1])
+        
+        for j in range(nega[i]+int(i>0), nega[i+1]+1):
+            for k in range(estimate_point[j]):
+                e += k
+                p_x.append(param[2*j+2*e])
+                p_y.append(param[2*j+2*e+1])
+                px.append(param[2*j+2*e])
+                py.append(param[2*j+2*e+1])
             p_x.append(point[j][0])
             p_y.append(point[j][1])
-            px.append(param[2*j])
-            py.append(param[2*j+1])
             px.append(point[j][0])
             py.append(point[j][1])
 
         x, y, k, l, list = spline(px, py)
         r_x.extend(x), r_y.extend(y), r_k.extend(k), length.extend(l), length_list.extend(list)
-    
-    ax.cla()
-    plt.gcf().canvas.mpl_connect('key_release_event',
-                                         lambda event: [exit(0) if event.key == 'escape' else None])
-    ax.grid(True)
-    ax.axis("equal")
 
-    # map settings
-    field_map = []
-    field_map.append(patches.Rectangle(xy=(field[0][0]-wall_thick, field[0][1]-wall_thick), width=field[1][0]-field[0][0]+wall_thick*2, height=field[1][1]-field[0][1]+wall_thick*2, angle=0, color="saddlebrown"))
-    field_map.append(patches.Rectangle(xy=(field[0][0], field[0][1]), width=field[1][0]-field[0][0], height=field[1][1]-field[0][1], angle=0, color="limegreen"))
+    if show_map:
+        ax.cla()
+        plt.gcf().canvas.mpl_connect('key_release_event',
+                                            lambda event: [exit(0) if event.key == 'escape' else None])
+        ax.grid(True)
+        ax.axis("equal")
 
-    field_map.append(patches.Rectangle(xy=(bar1[0][0]-(robot_size/2), bar1[0][1]), width=bar1[1][0]+(robot_size), height=bar1[1][1]+(robot_size/2), angle=0, ec='navy', color="aliceblue"))
-    field_map.append(patches.Rectangle(xy=(bar2[0][0]-(robot_size/2), bar2[0][1]), width=bar2[1][0]+(robot_size), height=bar2[1][1]-(robot_size/2), angle=0, ec='navy', color="aliceblue"))
+        # map settings
+        field_map = []
+        field_map.append(patches.Rectangle(xy=(field[0][0]-wall_thick, field[0][1]-wall_thick), width=field[1][0]-field[0][0]+wall_thick*2, height=field[1][1]-field[0][1]+wall_thick*2, angle=0, color="saddlebrown"))
+        field_map.append(patches.Rectangle(xy=(field[0][0], field[0][1]), width=field[1][0]-field[0][0], height=field[1][1]-field[0][1], angle=0, color="limegreen"))
 
-    field_map.append(patches.Rectangle(xy=(poll1[0][0]-(robot_size/2), poll1[0][1]-(robot_size/2)), width=poll1[1][0]+(robot_size), height=poll1[1][1]+(robot_size), angle=0, ec='navy', color="aliceblue"))
-    field_map.append(patches.Rectangle(xy=(poll2[0][0]-(robot_size/2), poll2[0][1]-(robot_size/2)), width=poll2[1][0]+(robot_size), height=poll2[1][1]+(robot_size), angle=0, ec='navy', color="aliceblue"))
-    field_map.append(patches.Rectangle(xy=(poll3[0][0]-(robot_size/2), poll3[0][1]-(robot_size/2)), width=poll3[1][0]+(robot_size), height=poll3[1][1]+(robot_size), angle=0, ec='navy', color="aliceblue"))
+        field_map.append(patches.Rectangle(xy=(bar1[0][0]-(robot_size/2), bar1[0][1]), width=bar1[1][0]+(robot_size), height=bar1[1][1]+(robot_size/2), angle=0, ec='navy', color="aliceblue"))
+        field_map.append(patches.Rectangle(xy=(bar2[0][0]-(robot_size/2), bar2[0][1]), width=bar2[1][0]+(robot_size), height=bar2[1][1]-(robot_size/2), angle=0, ec='navy', color="aliceblue"))
 
-    field_map.append(patches.Rectangle(xy=(sz[0][0], sz[0][1]), width=sz[1][0], height=sz[1][1], angle=0, ec='navy', color="red"))
-    field_map.append(patches.Rectangle(xy=(cz[0][0], cz[0][1]), width=cz[1][0], height=cz[1][1], angle=0, ec='navy', color="blue"))
-    field_map.append(patches.Rectangle(xy=(oz[0][0], oz[0][1]), width=oz[1][0], height=oz[1][1], angle=0, ec='navy', color="darkturquoise"))
-    field_map.append(patches.Rectangle(xy=(pz[0][0], pz[0][1]), width=pz[1][0], height=pz[1][1], angle=0, ec='navy', color="gold"))
-    
-    field_map.append(patches.Rectangle(xy=(bar1[0][0], bar1[0][1]), width=bar1[1][0], height=bar1[1][1], angle=0, ec='navy', color="saddlebrown"))
-    field_map.append(patches.Rectangle(xy=(bar2[0][0], bar2[0][1]), width=bar2[1][0], height=bar2[1][1], angle=0, ec='navy', color="saddlebrown"))
+        field_map.append(patches.Rectangle(xy=(poll1[0][0]-(robot_size/2), poll1[0][1]-(robot_size/2)), width=poll1[1][0]+(robot_size), height=poll1[1][1]+(robot_size), angle=0, ec='navy', color="aliceblue"))
+        field_map.append(patches.Rectangle(xy=(poll2[0][0]-(robot_size/2), poll2[0][1]-(robot_size/2)), width=poll2[1][0]+(robot_size), height=poll2[1][1]+(robot_size), angle=0, ec='navy', color="aliceblue"))
+        field_map.append(patches.Rectangle(xy=(poll3[0][0]-(robot_size/2), poll3[0][1]-(robot_size/2)), width=poll3[1][0]+(robot_size), height=poll3[1][1]+(robot_size), angle=0, ec='navy', color="aliceblue"))
 
-    field_map.append(patches.Rectangle(xy=(poll1[0][0], poll1[0][1]), width=poll1[1][0], height=poll1[1][1], angle=0, ec='navy', color="burlywood"))
-    field_map.append(patches.Rectangle(xy=(poll2[0][0], poll2[0][1]), width=poll2[1][0], height=poll2[1][1], angle=0, ec='navy', color="burlywood"))
-    field_map.append(patches.Rectangle(xy=(poll3[0][0], poll3[0][1]), width=poll3[1][0], height=poll3[1][1], angle=0, ec='navy', color="burlywood"))
+        field_map.append(patches.Rectangle(xy=(sz[0][0], sz[0][1]), width=sz[1][0], height=sz[1][1], angle=0, ec='navy', color="red"))
+        field_map.append(patches.Rectangle(xy=(cz[0][0], cz[0][1]), width=cz[1][0], height=cz[1][1], angle=0, ec='navy', color="blue"))
+        field_map.append(patches.Rectangle(xy=(oz[0][0], oz[0][1]), width=oz[1][0], height=oz[1][1], angle=0, ec='navy', color="darkturquoise"))
+        field_map.append(patches.Rectangle(xy=(pz[0][0], pz[0][1]), width=pz[1][0], height=pz[1][1], angle=0, ec='navy', color="gold"))
+        
+        field_map.append(patches.Rectangle(xy=(bar1[0][0], bar1[0][1]), width=bar1[1][0], height=bar1[1][1], angle=0, ec='navy', color="saddlebrown"))
+        field_map.append(patches.Rectangle(xy=(bar2[0][0], bar2[0][1]), width=bar2[1][0], height=bar2[1][1], angle=0, ec='navy', color="saddlebrown"))
 
-    field_map.append(patches.Rectangle(xy=(-robot_size/2, -robot_size/2), width=robot_size, height=robot_size, angle=0, ec='gold', fill=False))
-    
-    [ax.add_patch(m) for m in field_map]
+        field_map.append(patches.Rectangle(xy=(poll1[0][0], poll1[0][1]), width=poll1[1][0], height=poll1[1][1], angle=0, ec='navy', color="burlywood"))
+        field_map.append(patches.Rectangle(xy=(poll2[0][0], poll2[0][1]), width=poll2[1][0], height=poll2[1][1], angle=0, ec='navy', color="burlywood"))
+        field_map.append(patches.Rectangle(xy=(poll3[0][0], poll3[0][1]), width=poll3[1][0], height=poll3[1][1], angle=0, ec='navy', color="burlywood"))
 
-    ax.scatter(r_x, r_y, s=10, label="traj", c="dimgray")
-    ax.scatter(p_x, p_y, s=10, label="traj", c="orange")
-    plt.pause(0.001)
+        field_map.append(patches.Rectangle(xy=(-robot_size/2, -robot_size/2), width=robot_size, height=robot_size, angle=0, ec='gold', fill=False))
+        
+        [ax.add_patch(m) for m in field_map]
+
+        ax.scatter(r_x, r_y, s=10, label="traj", c="dimgray")
+        ax.scatter(p_x, p_y, s=10, label="traj", c="orange")
+        plt.pause(0.001)
 
     return p_x, p_y, r_x, r_y, r_k, length, length_list
 
@@ -209,6 +219,8 @@ def cross_cons(param):
                 num -= 1
     if num < 0: print("cross_error")
     return num
+
+# 右行け左行け
 
 
 def main():
