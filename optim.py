@@ -13,9 +13,6 @@ import trapezoid_vel_profile as profile
 
 #TODO
 '''
-・任意数おきに速度プロファイルに入力できるようにする
-・p_x, p_yを辞書型にして、ユーザー入力座標か最適化座標かわかりやすく色分け
-・初期値がおかしくないか判定して修正
 ・プロファイルパラメータも最適化したい
 '''
 
@@ -23,15 +20,11 @@ import trapezoid_vel_profile as profile
 parameters
 '''
 start = [0.0, 0.0, 0.0] # x y Θ
+point =  [[0.2, 3.2, 0.0], [1.1, 3.15, 90.0], [1.25, 0.0, 0.0], [2.97, 0.33, 0.0], [2.25, 1.35, 0.0], [2.97, 2.4, 0.0], [3.1, 3.6, 0.0]]
+estimate_number = [1, 1, 1, 1, 2, 2, 1]
 
-point =  [[0.2, 3.2, 0.0], [1.1, 3.15, 90.0], [1.25, 0.0, 0.0], [2.97, 0.35, 0.0], [2.25, 1.35, 0.0], [2.97, 2.4, 0.0], [3.1, 3.6, 0.0]]
-estimate_point = [1, 1, 1, 1, 2, 2, 1]
-velocity =     [0.0, 2.0, -1.0, 1.0, 1.0, 1.0, 0.0] # -1 --> stop
-acceleration = [5.0, 2.0,  5.0, 3.0, 3.0, 3.0, 3.0]
-
-declaration = acceleration
+vel_acc = [[0.0, 5.0], [2.0, 2.0], [-1.0, 5.0], [1.0, 3.0], [1.0, 3.0], [1.0, 3.0], [0.0, 3.0]] # -1 --> stop
 v_max = 3.0
-
 frequency = 1000 # hz
 
 field = [[-0.55, -0.55], [3.55, 3.95]] # lower_left to upper_right
@@ -50,20 +43,20 @@ robot_size = 0.5 # m
 roll_length = 0.3 # m
 
 l_gain = 1
-c_gain = 1.2
+c_gain = 1
 
 show_map = True
 
 param = []
 for i in range(len(point)):
     if i == 0:
-        for j in range(estimate_point[i]):
-            param.append(start[0]+(point[i][0]-start[0])*(j+1)/(estimate_point[i]+1))
-            param.append(start[1]+(point[i][1]-start[1])*(j+1)/(estimate_point[i]+1))
+        for j in range(estimate_number[i]):
+            param.append(start[0]+(point[i][0]-start[0])*(j+1)/(estimate_number[i]+1))
+            param.append(start[1]+(point[i][1]-start[1])*(j+1)/(estimate_number[i]+1))
     else:
-        for j in range(estimate_point[i]):
-            param.append(point[i-1][0]+(point[i][0]-point[i-1][0])*(j+1)/(estimate_point[i]+1))
-            param.append(point[i-1][1]+(point[i][1]-point[i-1][1])*(j+1)/(estimate_point[i]+1))
+        for j in range(estimate_number[i]):
+            param.append(point[i-1][0]+(point[i][0]-point[i-1][0])*(j+1)/(estimate_number[i]+1))
+            param.append(point[i-1][1]+(point[i][1]-point[i-1][1])*(j+1)/(estimate_number[i]+1))
 
 fig, ax = plt.subplots(figsize=(6, 6))
 
@@ -93,10 +86,10 @@ def spline(x, y):
 
 def calcTrajectory(param):
     nega = [0]
-    for i in range(len(velocity)):
-        if velocity[i] < 0:
+    for i in range(len(vel_acc)):
+        if vel_acc[i][0] < 0:
             nega.append(i)
-    nega.append(len(velocity)-1)
+    nega.append(len(vel_acc)-1)
 
     r_x, r_y, r_k, length, length_list = [], [], [], [], []
     p_x = []
@@ -114,7 +107,7 @@ def calcTrajectory(param):
             py.append(point[nega[i]][1])
         
         for j in range(nega[i]+int(i>0), nega[i+1]+1):
-            for k in range(estimate_point[j]):
+            for k in range(estimate_number[j]):
                 e += k
                 p_x.append(param[2*j+2*e])
                 p_y.append(param[2*j+2*e+1])
@@ -256,15 +249,21 @@ def main():
     v_start = 0.0
     v_target = 0.0
     t_list = []
+    e = 0
 
-    for i in range(len(velocity)):
-        x_target += length[i*2]+length[i*2+1]
-        velocity[i] = 0 if velocity[i] < 0 else velocity[i]
-        v_target = velocity[i]
-        (Y, Yd, Ydd, t) = profile.plan(x_start, x_target, v_start, v_target, v_max, acceleration[i], declaration[i], frequency)
-        x_start += length[i*2]+length[i*2+1]
-        v_start = velocity[i]
+    for i in range(len(vel_acc)):
+        x_target += length[i*2+e]
+        for j in range(1, estimate_number[i]+1):
+            x_target += length[i*2+e+j]
+        vel_acc[i][0] = 0 if vel_acc[i][0] < 0 else vel_acc[i][0]
+        v_target = vel_acc[i][0]
+        (Y, Yd, Ydd, t) = profile.plan(x_start, x_target, v_start, v_target, v_max, vel_acc[i][1], vel_acc[i][1], frequency)
+        x_start += length[i*2+e]
+        for j in range(1, estimate_number[i]+1):
+            x_start += length[i*2+e+j]
+        v_start = vel_acc[i][0]
         t_list.append(t[-1])
+        e += estimate_number[i]-1
 
     '''
     calc omega
@@ -293,14 +292,20 @@ def main():
     t_list = []
     stack_t = 0
     stack_y = np.array([])
+    e = 0
 
-    for i in range(len(velocity)):
-        x_target += length[i*2]+length[i*2+1]
-        v_target = velocity[i] - omega[i] * velocity[i] / v_max
-        (Y, Yd, Ydd, t) = profile.plan(x_start, x_target, v_start, v_target, v_max-omega[i], acceleration[i], declaration[i], frequency)
-        x_start += length[i*2]+length[i*2+1]
-        v_start = velocity[i] - omega[i] * velocity[i] / v_max
+    for i in range(len(vel_acc)):
+        x_target += length[i*2+e]
+        for j in range(1, estimate_number[i]+1):
+            x_target += length[i*2+e+j]
+        v_target = vel_acc[i][0] - omega[i] * vel_acc[i][0] / v_max
+        (Y, Yd, Ydd, t) = profile.plan(x_start, x_target, v_start, v_target, v_max-omega[i], vel_acc[i][1], vel_acc[i][1], frequency)
+        x_start += length[i*2+e]
+        for j in range(1, estimate_number[i]+1):
+            x_start += length[i*2+e+j]
+        v_start = vel_acc[i][0] - omega[i] * vel_acc[i][0] / v_max
         t_list.append(t[-1])
+        e += estimate_number[i]-1
 
         ax1.plot(stack_t+t, Y, label=str(i)) # Pos
         ax2.plot(stack_t+t, Yd, label=str(i)) # Vel
@@ -358,7 +363,8 @@ def main():
     ax3.scatter(p_x, p_y, s=30, label="point")
     ax3.axis('square')
     ax3.grid(which='major', linestyle='-')
-    plt.show()
+    if show_map:
+        plt.show()
 
 if __name__ == '__main__':
     main()
