@@ -1,7 +1,4 @@
-from cmath import inf
 import math
-from re import A
-from this import d
 import numpy as np
 import copy
 import matplotlib.pyplot as plt
@@ -45,7 +42,7 @@ roll_length = 0.3 # m
 l_gain = 1
 c_gain = 1
 
-show_map = True
+show_map = False
 
 param = []
 for i in range(len(point)):
