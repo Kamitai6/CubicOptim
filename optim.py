@@ -6,6 +6,7 @@ import matplotlib.patches as patches
 from scipy.optimize import minimize
 from CubicSpline import Spline2D
 import trapezoid_vel_profile as profile
+import csv
 
 
 # TODO
@@ -314,11 +315,12 @@ def main():
     '''
     adjustment velocity
     '''
+    plot_t = [0.0]
     x_start, x_target = 0.0, 0.0
     v_start, v_target = 0.0, 0.0
     t_list = []
     stack_t = 0
-    stack_y = np.array([])
+    stack_y = np.array([0.0])
     e = 0
 
     for i in range(len(vel_acc)):
@@ -339,8 +341,9 @@ def main():
 
         ax1.plot(stack_t+t, Y, label=str(i))  # Pos
         ax2.plot(stack_t+t, Yd, label=str(i))  # Vel
+        plot_t.extend(stack_t+t[1:])
         stack_t += t[-1]
-        stack_y = np.append(stack_y, np.array(Y))
+        stack_y = np.append(stack_y, np.array(Y[1:]))
 
     '''
     adjustment angular velocity
@@ -349,7 +352,7 @@ def main():
     omega = []
     th_start, th_target = 0.0, 0.0
     stack_t = 0
-    stack_th = np.array([])
+    stack_th = np.array([0.0])
 
     for i in range(len(theta)-1):
         if theta[i] != theta[i+1]:
@@ -365,7 +368,7 @@ def main():
             ax5.plot(stack_t+t, THd, label=str(i))  # Vel
             th_start += abs(theta[i+1] - theta[i])
             stack_t += t[-1]
-            stack_th = np.append(stack_th, np.array(TH))
+            stack_th = np.append(stack_th, np.array(TH[1:]))
         else:
             omega.append(0.0)
             stack_th = np.append(stack_th, np.zeros(int(t_list[i]*frequency)))
@@ -374,12 +377,54 @@ def main():
     fusion
     '''
     trajectory = []
+    pre_index = 0
+    count = 0
     length_cum = np.cumsum(length_list)
+    
     for y, th in zip(stack_y, stack_th):
         idx = np.abs(np.asarray(length_cum) - y).argmin()
-        trajectory.append((r_x[idx], r_y[idx], th))
+        if idx != 0 and pre_index != idx or idx == len(r_x)-1:
+            if count > 1:
+                dx = (r_x[idx]-r_x[pre_index])/count
+                dy = (r_y[idx]-r_y[pre_index])/count
+                for i in range(count):
+                    trajectory.append((r_x[pre_index]+dx*i, r_y[pre_index]+dy*i, th))
+                count = 1
+                if idx == len(r_x)-1:
+                    trajectory.append((r_x[idx], r_y[idx], th))
+            else:
+                trajectory.append((r_x[idx], r_y[idx], th))
+        else:
+            count += 1
+        pre_index = idx
+
+    print(len(trajectory))
+    print(len(plot_t))
 
     ax6.plot(trajectory)
+    push_data = [['0.000', '0.000', '0.000', '0.000', '0.000', '0.000', '0.001', '0.000', '0.000']]
+    for i in range(1, len(plot_t)):
+        t = str(round(plot_t[i], 3))
+        x = str(round(trajectory[i][0]*1000, 3))
+        y = str(round(trajectory[i][1]*1000, 3))
+        th = str(round(trajectory[i][2]*1000, 3))
+        vx = round((trajectory[i][0]-trajectory[i-1][0])*frequency*1000, 3)
+        vy = round((trajectory[i][1]-trajectory[i-1][1])*frequency*1000, 3)
+        v = round(np.hypot(vx, vy), 3)
+        push_data.append([t, x, y, th, str(vx), str(vy), str(v), '0.0', '0.0'])
+
+    with open('test.csv', 'w', newline="") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(['LABEL t', 'x', 'y', 'theta', 'vx', 'vy', '|v|', 'arg(v)', 'omega'])
+        writer.writerow(['INTERVALTIME','0.001'])
+        writer.writerow(['START', '0.000', '0.000', '0.000', '0.000', '0.000', '0.000', '0.001', '0.000', '0.000'])
+        writer.writerow(['END',str(sum(t_list)), str(trajectory[-1][0]*1000), str(trajectory[-1][1]*1000), '0.000', '0.000', '0.000', '0.001', '0.000', '0.000'])
+        writer.writerow(['LENGTH',str(sum(length)*1000)])
+        writer.writerow(['TIME',str(sum(t_list))])
+        writer.writerow([])
+        writer.writerow(['MAIN'])
+        writer.writerows(push_data)
+
 
     '''
     plot
@@ -392,8 +437,8 @@ def main():
     ax3.scatter(p_x, p_y, s=30, label="point")
     ax3.axis('square')
     ax3.grid(which='major', linestyle='-')
-    if show_map:
-        plt.show()
+    # if show_map:
+    plt.show()
 
 
 if __name__ == '__main__':
