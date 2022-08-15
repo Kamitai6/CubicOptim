@@ -398,9 +398,6 @@ def main():
             count += 1
         pre_index = idx
 
-    print(len(trajectory))
-    print(len(plot_t))
-
     ax6.plot(trajectory)
     push_data = [['0.000', '0.000', '0.000', '0.000', '0.000', '0.000', '0.001', '0.000', '0.000']]
     for i in range(1, len(plot_t)):
@@ -416,11 +413,11 @@ def main():
     with open('test.csv', 'w', newline="") as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(['LABEL t', 'x', 'y', 'theta', 'vx', 'vy', '|v|', 'arg(v)', 'omega'])
-        writer.writerow(['INTERVALTIME','0.001'])
-        writer.writerow(['START', '0.000', '0.000', '0.000', '0.000', '0.000', '0.000', '0.001', '0.000', '0.000'])
-        writer.writerow(['END',str(sum(t_list)), str(trajectory[-1][0]*1000), str(trajectory[-1][1]*1000), '0.000', '0.000', '0.000', '0.001', '0.000', '0.000'])
-        writer.writerow(['LENGTH',str(sum(length)*1000)])
-        writer.writerow(['TIME',str(sum(t_list))])
+        writer.writerow(['INTERVALTIME 0.001'])
+        writer.writerow(['START 0.000', '0.000', '0.000', '0.000', '0.000', '0.000', '0.001', '0.000', '0.000'])
+        writer.writerow(['END '+str(sum(t_list)), str(trajectory[-1][0]*1000), str(trajectory[-1][1]*1000), '0.000', '0.000', '0.000', '0.001', '0.000', '0.000'])
+        writer.writerow(['LENGTH '+str(sum(length)*1000)])
+        writer.writerow(['TIME '+str(sum(t_list))])
         writer.writerow([])
         writer.writerow(['MAIN'])
         writer.writerows(push_data)
