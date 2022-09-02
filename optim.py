@@ -18,19 +18,28 @@ import csv
 parameters
 '''
 # 走った
-start = [0.0, 0.0, 0.0]  # x y Θ
-point = [[0.0, 3.2, 0.0], [1.1, 3.25, 0.0], [1.25, 0.0, 0.0],
-    [3.0, 0.3, 0.0], [3.0, 1.0, 0.0], 
-    [2.2, 1.3, 0.0], [2.2, 2.0, 0.0],  
-    [3.05, 2.3, 0.0], [3.1, 3.6, 0.0]]
+start = [0.0, 0.0, 0.0]  # x y Θ -> 0.54 0.35 0.0
+point = [[0.0, 3.4, 0.0], [1.05, 3.5, 0.0], [1.1, 0.1, 0.0],
+    [3.05, 0.5, 0.0], [3.0, 1.25, 0.0], 
+    [2.2, 1.5, 0.0], [2.25, 2.25, 0.0],  
+    [3.1, 2.5, 0.0], [2.75, 3.4, 0.0]]
 estimate_number = [0, 1, 1, 1, 1, 1, 1, 1, 1]
 
-# 走った
-vel_acc = [[-1.0, 2.0], [1.0, 1.0], [-1.0, 2.0], 
-    [1.0, 2.0], [1.0, 2.0], 
-    [1.0, 2.0], [1.0, 2.0], 
-    [1.0, 2.0], [0.0, 2.0]]  # -1 --> stop
-v_max = 2.0
+# 遅いやつ
+vel_acc_dec_vmax = [[-1.0, 2.5, 1.5, 2.0], [1.0, 1.0, 1.0, 1.0], [-1.0, 2.5, 1.5, 2.0], 
+    [1.0, 2.0, 1.5, 1.5], [1.0, 1.5, 1.5, 1.0], 
+    [1.0, 1.5, 1.5, 1.0], [1.0, 1.5, 1.5, 1.0], 
+    [1.0, 1.5, 1.5, 1.0], [0.0, 1.0, 1.0, 1.0]]  # -1 --> stop
+# 理論値 12.3s, 実測値 18s
+
+# 速いやつ
+# vel_acc_dec_vmax = [[-1.0, 3.5, 2.0, 2.5], [1.0, 1.0, 1.0, 2.0], [-1.0, 3.5, 2.0, 2.5], 
+#     [1.5, 2.5, 2.0, 2.0], [1.5, 2.0, 1.5, 1.5], 
+#     [1.5, 2.0, 1.5, 1.5], [1.5, 2.0, 1.5, 1.5], 
+#     [1.5, 2.0, 1.5, 1.5], [0.0, 1.0, 1.0, 1.0]]  # -1 --> stop
+# 理論値 11.8s, 実測値 16s
+
+csv_name = "low"
 
 # 戻る
 # start = [3.1, 3.6, 0.0]  # x y Θ
@@ -39,37 +48,39 @@ v_max = 2.0
 
 # estimate_number = [0, 0, 0, 0, 0]
 
-# vel_acc = [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]  # -1 --> stop
+# vel_acc_dec_vmax = [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]  # -1 --> stop
 # v_max = 1.0
 
 # やばかった
-# vel_acc = [[-1.0, 3.0], [2.0, 2.0], [-1.0, 3.0], 
+# vel_acc_dec_vmax = [[-1.0, 3.0], [2.0, 2.0], [-1.0, 3.0], 
 #     [2.0, 3.0], [2.0, 3.0], 
 #     [2.0, 3.0], [2.0, 3.0], 
 #     [2.0, 3.0], [0.0, 3.0]]  # -1 --> stop
 # v_max = 3.0
 
+zurasu = [0.01, 0.2]
+
 frequency = 500  # hz
 
-field = [[-0.55, -0.55], [3.55, 3.95]]  # lower_left to upper_right
-wall_thick = 0.038
-sz = [[-0.55, -0.55], [0.8, 0.8]]  # point xy and size xy
-cz = [[0.281, -0.55], [0.45, 0.8]]
-oz = [[-0.55, 3.95], [0.5, -1.4]]
-pz = [[2.31, 3.95], [0.6, -0.5]]
-bar1 = [[0.731, -0.55], [wall_thick, 3.5]]
-bar2 = [[1.631, 3.95], [wall_thick, -3.5]]
-poll1 = [[2.61-(0.118/2), 0.65-(0.118/2)], [0.118, 0.118]]
-poll2 = [[2.61-(0.118/2), 1.65-(0.118/2)], [0.118, 0.118]]
-poll3 = [[2.61-(0.118/2), 2.65-(0.118/2)], [0.118, 0.118]]
-
-robot_size = 0.6  # m
+robot_size = 0.6 # m
 roll_length = 0.3  # m
 
-l_gain = 1
-c_gain = 3
+field = [[-0.55+zurasu[0], -0.55+zurasu[1]], [3.55+zurasu[0], 3.95+zurasu[1]]]  # lower_left to upper_right
+wall_thick = 0.038
+sz = [[-0.55+zurasu[0], -0.55+zurasu[1]], [0.8, 0.8]]  # point xy and size xy
+cz = [[0.281+zurasu[0], -0.55+zurasu[1]], [0.45, 0.8]]
+oz = [[-0.55+zurasu[0], 3.95+zurasu[1]], [0.5, -1.4]]
+pz = [[2.31+zurasu[0], 3.95+zurasu[1]], [0.6, -0.5]]
+bar1 = [[0.731+zurasu[0], -0.55+zurasu[1]], [wall_thick, 3.5]]
+bar2 = [[1.631+zurasu[0], 3.95+zurasu[1]], [wall_thick, -3.5]]
+poll1 = [[2.61-(0.118/2)+zurasu[0], 0.65-(0.118/2)+zurasu[1]], [0.118, 0.118]]
+poll2 = [[2.61-(0.118/2)+zurasu[0], 1.65-(0.118/2)+zurasu[1]], [0.118, 0.118]]
+poll3 = [[2.61-(0.118/2)+zurasu[0], 2.65-(0.118/2)+zurasu[1]], [0.118, 0.118]]
 
-show_map = True
+l_gain = 1
+c_gain = 2
+
+show_map = False
 
 param = []
 for i in range(len(point)):
@@ -85,6 +96,9 @@ for i in range(len(point)):
                          [0])*(j+1)/(estimate_number[i]+1))
             param.append(point[i-1][1]+(point[i][1]-point[i-1]
                          [1])*(j+1)/(estimate_number[i]+1))
+
+# god adjustment
+param[5] -= 0.2
 
 fig, ax = plt.subplots(figsize=(6, 6))
 
@@ -128,8 +142,8 @@ def spline(x, y):
 
 
 def calcTrajectory(param):
-    nega = [0] + [i for i in range(len(vel_acc))
-                  if vel_acc[i][0] < 0] + [len(vel_acc)-1]
+    nega = [0] + [i for i in range(len(vel_acc_dec_vmax))
+                  if vel_acc_dec_vmax[i][0] < 0] + [len(vel_acc_dec_vmax)-1]
     r_x, r_y, r_k, length, length_list = [], [], [], [], []
     index_size_list = []
     p_x, p_y = [], []
@@ -178,9 +192,9 @@ def calcTrajectory(param):
                          [0]-field[0][0], height=field[1][1]-field[0][1], angle=0, color="limegreen"))
 
         field_map.append(patches.Rectangle(xy=(bar1[0][0]-(robot_size/2), bar1[0][1]), width=bar1[1][0]+(
-            robot_size), height=bar1[1][1]+(robot_size/2), angle=0, ec='navy', color="aliceblue"))
-        field_map.append(patches.Rectangle(xy=(bar2[0][0]-(robot_size/2), bar2[0][1]), width=bar2[1][0]+(
-            robot_size), height=bar2[1][1]-(robot_size/2), angle=0, ec='navy', color="aliceblue"))
+            robot_size - 0.1), height=bar1[1][1]+(robot_size/2), angle=0, ec='navy', color="aliceblue"))
+        field_map.append(patches.Rectangle(xy=(bar2[0][0]-(robot_size/2) - 0.1, bar2[0][1]), width=bar2[1][0]+(
+            robot_size + 0.1), height=bar2[1][1]-(robot_size/2), angle=0, ec='navy', color="aliceblue"))
 
         field_map.append(patches.Rectangle(xy=(poll1[0][0]-(robot_size/2), poll1[0][1]-(robot_size/2)), width=poll1[1][0]+(
             robot_size), height=poll1[1][1]+(robot_size), angle=0, ec='navy', color="aliceblue"))
@@ -259,8 +273,8 @@ def obstacle_cons(param):
     r_x, r_y = calcTrajectory(param)[2:4]
     num = 0
     for x, y in zip(r_x, r_y):
-        if (bar1[0][0]-(robot_size/2)) < x < ((bar1[0][0]+bar1[1][0])+(robot_size/2)) and y < (bar1[0][1]+bar1[1][1]+(robot_size/2)) \
-                or (bar2[0][0]-(robot_size/2)) < x < ((bar2[0][0]+bar2[1][0])+(robot_size/2)) and (bar2[0][1]+bar2[1][1]-(robot_size/2)) < y \
+        if (bar1[0][0]-(robot_size/2)) < x < ((bar1[0][0]+bar1[1][0])+(robot_size/2) - 0.1) and y < (bar1[0][1]+bar1[1][1]+(robot_size/2)) \
+                or (bar2[0][0]-(robot_size/2)) < x < ((bar2[0][0]+bar2[1][0])+(robot_size/2) + 0.1) and (bar2[0][1]+bar2[1][1]-(robot_size/2)) < y \
                 or (poll1[0][0]-(robot_size/2)) < x < ((poll1[0][0]+poll1[1][0])+(robot_size/2)) and (poll1[0][1]-(robot_size/2)) < y < ((poll1[0][1]+poll1[1][1])+(robot_size/2)) \
                 or (poll2[0][0]-(robot_size/2)) < x < ((poll2[0][0]+poll2[1][0])+(robot_size/2)) and (poll2[0][1]-(robot_size/2)) < y < ((poll2[0][1]+poll2[1][1])+(robot_size/2)) \
                 or (poll3[0][0]-(robot_size/2)) < x < ((poll3[0][0]+poll3[1][0])+(robot_size/2)) and (poll3[0][1]-(robot_size/2)) < y < ((poll3[0][1]+poll3[1][1])+(robot_size/2)):
@@ -326,24 +340,24 @@ def main():
     x_start, x_target = 0.0, 0.0
     v_start, v_target = 0.0, 0.0
     t_list = []
-    start_num = [0] + [i for i in range(len(vel_acc))
-                  if vel_acc[i][0] < 0]
+    start_num = [0] + [i for i in range(len(vel_acc_dec_vmax))
+                  if vel_acc_dec_vmax[i][0] < 0]
     e = 0
 
-    for i in range(len(vel_acc)):
+    for i in range(len(vel_acc_dec_vmax)):
         x_target += length[i*2+e]
         for j in range(estimate_number[i]):
             x_target += length[i*2+e+j+1]
 
-        vel_acc[i][0] = 0 if vel_acc[i][0] < 0 else vel_acc[i][0]
-        v_target = vel_acc[i][0]
+        vel_acc_dec_vmax[i][0] = 0 if vel_acc_dec_vmax[i][0] < 0 else vel_acc_dec_vmax[i][0]
+        v_target = vel_acc_dec_vmax[i][0]
         (Y, Yd, _, t) = profile.plan(x_start, x_target, v_start,
-                                     v_target, v_max, vel_acc[i][1], vel_acc[i][1], frequency)
+                                     v_target, vel_acc_dec_vmax[i][3], vel_acc_dec_vmax[i][1], vel_acc_dec_vmax[i][2], frequency)
         x_start += length[i*2+e]
         for j in range(estimate_number[i]):
             x_start += length[i*2+e+j+1]
 
-        v_start = vel_acc[i][0]
+        v_start = vel_acc_dec_vmax[i][0]
         t_list.append(t[-1])
         e += estimate_number[i]-1
 
@@ -372,18 +386,18 @@ def main():
     stack_y = []
     stack_len = []
 
-    for i in range(len(vel_acc)):
+    for i in range(len(vel_acc_dec_vmax)):
         x_target += length[i*2+e]
         for j in range(estimate_number[i]):
             x_target += length[i*2+e+j+1]
-        v_target = vel_acc[i][0] - omega[i] * vel_acc[i][0] / v_max
+        v_target = vel_acc_dec_vmax[i][0] - omega[i] * vel_acc_dec_vmax[i][0] / vel_acc_dec_vmax[i][3]
         (Y, Yd, _, t) = profile.plan(x_start, x_target, v_start,
-                                    v_target, v_max-omega[i], vel_acc[i][1], vel_acc[i][1], frequency)
+                                    v_target, vel_acc_dec_vmax[i][3]-omega[i], vel_acc_dec_vmax[i][1], vel_acc_dec_vmax[i][2], frequency)
         x_start += length[i*2+e]
         x_start += sum([
             length[i*2+e+j+1] for j in range(estimate_number[i])
         ])
-        v_start = vel_acc[i][0] - omega[i] * vel_acc[i][0] / v_max
+        v_start = vel_acc_dec_vmax[i][0] - omega[i] * vel_acc_dec_vmax[i][0] / vel_acc_dec_vmax[i][3]
         t_list.append(t[-1])
         
         ax1.plot(stack_t+t, Y, label=str(i))  # Pos
@@ -514,7 +528,7 @@ def main():
             omega = checkKeta(str(round((out_trajectory[i][2]-out_trajectory[i-1][2])*frequency*1000, 3)))
             push_data.append([t, x, y, th, str(vx), str(vy), str(v), str(argv), str(omega)])
 
-        with open('test'+str(j)+'.csv', 'w', newline="") as csv_file:
+        with open(csv_name+str(j)+'.csv', 'w', newline="") as csv_file:
             writer = csv.writer(csv_file)
             writer.writerow(['LABEL t', 'x', 'y', 'theta', 'vx', 'vy', '|v|', 'arg(v)', 'omega'])
             writer.writerow(['INTERVALTIME 0.001'])
